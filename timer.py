@@ -7,7 +7,7 @@ import time
 
 
 class RepeatingTimer(Thread):
-    """Call a function after a specified number of seconds:
+    """   在特定时间后使用特定的函数
             t = Timer(30.0, f, args=[], kwargs={})
             t.start()
             t.cancel() # stop the timer's action if it's still waiting

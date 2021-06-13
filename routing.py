@@ -17,7 +17,7 @@ import networkx as nx
 q = queue.Queue()
 # 消息队列设置
 que_set = {
-    0: queue.Queue(10),
+    0: queue.Queue(10), # 每个邻居的消息同时最多存在10个
     1: queue.Queue(10),
     2: queue.Queue(10),
     3: queue.Queue(10),
@@ -38,12 +38,15 @@ class Router(QThread):
     """
     light_sig = pyqtSignal(int, str)
 
-    def __init__(self, routing_id, ip, mask, neighbors, vertex_set, edge_set):
+    def __init__(self, routing_id:int, ip:str, mask:str, neighbors:list, vertex_set:list, edge_set:list):
         """
         初始化路由
         :param routing_id: 路由id
         :param ip: 路由ip
-        :param neighbors:路由的邻接路由id列表
+        :param mask: 子网掩码
+        :param neighbors: 路由的邻接路由id列表
+        :param vertex_set: 路由器的顶点集
+        :param edge_set: 路由器边集
         """
         super().__init__()
         # 路由器id
@@ -82,7 +85,7 @@ class Router(QThread):
         self.lsr_rp = RepeatingTimer(NOMAL_INTERVAL, self.link_state_request)
         # 生成路由表线程
         self.rt_rp = RepeatingTimer(NOMAL_INTERVAL * 2, self.update_net)
-        # 线程状态
+        # 线程状态mm7d
         self.status = setting.ROUTER_STATUS['init']
         # 线程启动控制
         self.thread_start = {'lsr': False}
@@ -110,6 +113,10 @@ class Router(QThread):
         return rep
 
     def get_router_table(self):
+        """
+        获得路由表
+        :return:
+        """
         return self.router_table
 
     def update_weight(self, weight):
@@ -125,7 +132,7 @@ class Router(QThread):
 
     def update_net(self):
         """
-
+        更新网络拓扑结构
         :return:
         """
         # 初始化网络
@@ -168,7 +175,7 @@ class Router(QThread):
 
     def run(self):
         """
-        执行函数
+        执行函数，线程开启时会执行此函数
         :return:
         """
         # 定时任务，发送hello分组
@@ -183,6 +190,7 @@ class Router(QThread):
         # 定时任务，更新路由表
         if not self.rt_rp.is_alive():
             self.rt_rp.start()
+
         while True:
             if self.status != setting.ROUTER_STATUS['stop']:
                 if not self.set_death_time:
@@ -437,6 +445,9 @@ class Router(QThread):
                 self.status = setting.ROUTER_STATUS['synsed']
 
     def log(self, text):
+        """
+        日志函数，记录程序日志
+        """
         print('[%s][%d号路由(状态: %2d)][消息队列: %2d] ' %
               (time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()), self.id,
                self.status, que_set[self.id].qsize()) + text)

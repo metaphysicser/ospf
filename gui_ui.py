@@ -2,27 +2,27 @@
 
 
 from PyQt5.QtCore import Qt
-from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtGui import QPainter, QPen, QPixmap, QImage
+from PyQt5 import QtCore, QtWidgets
+from PyQt5.QtGui import QPainter, QPixmap, QImage
 import sys
 from overload_qt import RouterLabel
-import itertools
-ROUTER_NUM = 4
-SCREEN_H = 800
-SCREEN_W = 600
+
+ROUTER_NUM = 4 # the number of router
+SCREEN_H = 800 # the height of window
+SCREEN_W = 600 # the width of window
 
 
 class UiMainWin(QtWidgets.QMainWindow):
     def __init__(self):
         super(UiMainWin, self).__init__()
         self.setObjectName("mainWin")
-        self.resize(SCREEN_H, SCREEN_W)
+        self.resize(SCREEN_H, SCREEN_W) # set the window size
         self.centralwidget = QtWidgets.QWidget(self)
         self.centralwidget.setObjectName("centralwidget")
         self.router_labels = list()
         self.router_id_labels = list()
 
-        # 设置路由图标
+        # set the icon of router
         router_x = [SCREEN_W * 0.25, SCREEN_W * 0.90]
         router_y = [SCREEN_H * 0.1, SCREEN_H * 0.3]
         router_x += router_x

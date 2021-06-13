@@ -47,7 +47,7 @@ class GUI(UiMainWin):
 
     def run(self):
         """
-        运行函数
+        运行函数, 开启线程池中的每个线程来模拟路由器启动
         :return:
         """
         # 开启线程
