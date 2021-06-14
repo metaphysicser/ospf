@@ -73,7 +73,7 @@ class Router(QThread):
         self.death_interval = DEATH_INTERVAL
         # 邻接路由器不可达判断时间
         self.death_time = dict()
-        # 数据库同步信号
+        # 数据库同步信号，数据库是否已经和邻居一致
         self.synchronization = {k: False for k in neighbors}
         # hello线程
         self.hello_rp = RepeatingTimer(HELLO_INTERVAL, self.hello)
@@ -136,24 +136,28 @@ class Router(QThread):
         :return:
         """
         # 初始化网络
-        self.net.add_nodes_from(self.vertex_set)
-        self.net.add_weighted_edges_from(self.edge_set)
-        self.generate_router_table()
+        self.net.add_nodes_from(self.vertex_set) # 更新网络拓扑结构
+        self.net.add_weighted_edges_from(self.edge_set) # 更新权重
+        self.generate_router_table() #生成路由选择表
 
     def generate_router_table(self):
+        """
+        生成路由选择表
+        """
         try:
-            targets = [x for x in self.vertex_set if x != self.id]
+            targets = [x for x in self.vertex_set if x != self.id] # 目标到达的路由器
             targets = list(set(targets))
             target_ips = [self.ip_set[x] for x in targets]
             target_masks = [self.mask_set[x] for x in targets]
             target_gateway = list()
-            target_costs = list()
-            target_path = list()
+            target_costs = list() # 到达目标耗费
+            target_path = list() # 到达目标路径
             for tg in targets:
                 try:
-                    length, path = nx.bidirectional_dijkstra(self.net, self.id, tg)
+                    length, path = nx.bidirectional_dijkstra(self.net, self.id, tg) # 利用dijkstra算法计算最短路径
                     target_gateway.append(self.ip_set[path[1]])
-                except nx.exception.NetworkXNoPath:
+                except nx.exception.NetworkXNoPath as e:
+                    print(e)
                     length, path = 0, list()
                 target_costs.append(length)
                 target_path.append(path)
@@ -196,7 +200,7 @@ class Router(QThread):
                 if not self.set_death_time:
                     self.death_time = {k: v for (k, v) in zip(self.neighbors,
                                                               [time.time() + self.death_interval for _ in
-                                                               range(len(self.neighbors))])}
+                                                               range(len(self.neighbors))])} # 当前时间加上死亡时间间隔，不断更新
                     self.set_death_time = True
                 if que_set[self.id].qsize():
                     if que_set[self.id].qsize() == 10:
@@ -204,8 +208,10 @@ class Router(QThread):
                             que_set[self.id].get()
                     else:
                         msg = que_set[self.id].get()
-                        self.handle_msg(msg)
+                        self.handle_msg(msg) # 处理消息队列中的消息
                 self.event_check()
+            else:
+                break
 
     def update_conf(self, conf):
         # 路由器ip
@@ -248,6 +254,10 @@ class Router(QThread):
         self.old_status = self.status
         self.status = setting.ROUTER_STATUS['stop']
         self.set_death_time = False
+
+
+
+
         self.log('被用户停止')
 
     def router_continue(self):
@@ -292,7 +302,7 @@ class Router(QThread):
                         self.vertex_set.remove(neighbor)
                     if neighbor in self.net.nodes:
                         self.net.remove_node(neighbor)
-                    self.net.remove_node(neighbor)
+                    # self.net.remove_node(neighbor)
                     self.log('邻接: %s  边集: %s' % (self.neighbors, self.net.edges))
                 except KeyError or ValueError or nx.exception.NetworkXErro:
                     self.log('L251发生错误' % neighbor)
@@ -375,6 +385,7 @@ class Router(QThread):
                 # 若发送者不存在于当前的邻居列表，则添加到列表中
             self.death_time[msg.sender] = time.time() + self.death_interval
             self.log('接收到%d号路由的hello分组' % msg.sender)
+
         elif msg.type == setting.MSG_TYPE['DD']:
             # 收到DD分组时, 查看是否有不同的数据库描述, 有则更新
             self.log('接收到%d号路由的DD分组' % msg.sender)
@@ -393,7 +404,7 @@ class Router(QThread):
                 # 若接受的数据库描述无需更新, 则与发送者同步
                 self.synchronization[msg.sender] = True
         elif msg.type == setting.MSG_TYPE['LSR']:
-            # 发送LSR响应
+            # 发送LSR响应，链路状态请求
             self.sender = msg.sender
             self.log('接收到%d号路由的LSR分组' % msg.sender)
             r_id = msg.body['id']
@@ -410,18 +421,19 @@ class Router(QThread):
                     que_set[self.sender].put(msg)
                     self.log('向%d号路由发送LSRR分组' % self.sender)
         elif msg.type == setting.MSG_TYPE['LSRR']:
-            # 接受LSR响应
+            # 接受LSR响应，链路状态请求响应
             self.log('接收到%d号路由的LSRR分组' % msg.sender)
             self.ip_set[msg.body['id']] = msg.body['ip']
             self.mask_set[msg.body['id']] = msg.body['mask']
         elif msg.type == setting.MSG_TYPE['LSU']:
-            # 接收LSU请求
+            # 接收LSU请求，链路状态更新
             self.sender = msg.sender
             self.log('接收到%d号路由的LSU分组' % msg.sender)
             if msg.body['dn'] == 1:
                 if msg.body['tg'] in self.vertex_set:
                     self.vertex_set.remove(msg.body['tg'])
                     self.link_state_update(dn=1, tg=msg.body['tg'])
+                    # 移除后，进行洪泛
                     while que_set[self.id].qsize():
                         que_set[self.id].get()
             elif msg.body['dn'] == 0:
@@ -432,13 +444,14 @@ class Router(QThread):
                 if msg.body['tg'] not in self.vertex_set:
                     self.vertex_set.append(msg.body['tg'])
                     self.link_state_update(dn=-1, tg=msg.body['tg'])
+                    # 添加后进行洪泛
             self.flooding[msg.sender] = True
             # 更新确认
             msg = Message(self.id, self.sender, setting.MSG_TYPE['LSUA'])
             que_set[self.sender].put(msg)
             self.log('向%d号路由发送LSUA分组' % self.sender)
         elif msg.type == setting.MSG_TYPE['LSUA']:
-            # 接收LSUA请求
+            # 接收LSUA请求，链路状态更新确认
             self.log('接收到%d号路由的LSUA分组' % msg.sender)
             self.flooding[msg.sender] = True
             if self.status != setting.ROUTER_STATUS['stop']:

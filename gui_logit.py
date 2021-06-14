@@ -92,6 +92,10 @@ class GUI(UiMainWin):
         """
         for router in self.threads:
             router.stop()
+            # del router
+            # print(router)
+
+
 
     def stop_router(self, r_id):
         """
