@@ -254,10 +254,6 @@ class Router(QThread):
         self.old_status = self.status
         self.status = setting.ROUTER_STATUS['stop']
         self.set_death_time = False
-
-
-
-
         self.log('被用户停止')
 
     def router_continue(self):

@@ -33,23 +33,25 @@ class GUI(UiMainWin):
             self.router_labels[i].set_id(i)
             self.router_labels[i].clicked.connect(self.jump_to_subwin)
 
-        # 按默认设置初始化路由线程
-        for rout_conf in setting.DEFAULT_ROUTING:
-            t = Router(rout_conf['id'], rout_conf['ip'], rout_conf['mask'], rout_conf['neighbors'],
-                       rout_conf['vertex_set'], rout_conf['edge_set'])
-            t.light_sig.connect(self.change_light)
-            self.threads.append(t)
 
-        self.weight = setting.DEFAULT_WEIGHT
-        weights = list(self.weight.values())
-        for i in range(len(self.edges)):
-            self.edges[i].setPlaceholderText(str(weights[i]))
+
 
     def run(self):
         """
         运行函数, 开启线程池中的每个线程来模拟路由器启动
         :return:
         """
+        # 按默认设置初始化路由线程
+        for rout_conf in setting.DEFAULT_ROUTING:
+            t = Router(rout_conf['id'], rout_conf['ip'], rout_conf['mask'], rout_conf['neighbors'],
+                       rout_conf['vertex_set'], rout_conf['edge_set'])
+            t.light_sig.connect(self.change_light)
+            self.threads.append(t)
+        self.weight = setting.DEFAULT_WEIGHT
+        weights = list(self.weight.values())
+        for i in range(len(self.edges)):
+            self.edges[i].setPlaceholderText(str(weights[i]))
+
         # 开启线程
         for t in self.threads:
             t.start()
@@ -92,7 +94,7 @@ class GUI(UiMainWin):
         """
         for router in self.threads:
             router.stop()
-            # del router
+            del router
             # print(router)
 
 
@@ -111,7 +113,6 @@ class GUI(UiMainWin):
         :param r_id:
         :return:
         """
-        print(1)
         conf = self.threads[r_id].get_conf()
         table = self.threads[r_id].get_router_table()
         self.subwins[r_id].update_conf(conf)
